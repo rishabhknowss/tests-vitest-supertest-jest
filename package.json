@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@types/supertest": "^6.0.3",
+    "gh-pages": "^6.3.0",
     "supertest": "^7.1.3"
   }
 }
