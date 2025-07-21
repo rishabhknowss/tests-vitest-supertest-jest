@@ -1,0 +1,55 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: mysecretpassword
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: cd 1-integration-test && npm install
+
+      - name: Copy .env.example to .env
+        run: cp 1-integration-test/.env.example 1-integration-test/.env
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          sudo apt-get install -y postgresql-client
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for database..."
+            sleep 2
+          done
+
+      - name: Run Prisma migrations
+        run: cd 1-integration-test && npx prisma migrate dev --name init
+
+      - name: Run integration tests
+        run: cd 1-integration-test && npm run test:integration
